@@ -1,4 +1,4 @@
-package projeto_academia.enums;
+package enums;
  
 public enum TipoFuncionario {
     INSTRUTOR,
