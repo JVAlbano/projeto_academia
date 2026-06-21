@@ -1,0 +1,235 @@
+@startuml diagrama-classes
+title Sistema de Gerenciamento de Rede de Academias - Diagrama de Classes
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+' ======================= HIERARQUIA DE PESSOAS =======================
+abstract class Pessoa {
+  # id : String
+  # nome : String
+  # cpf : String
+  # email : String
+  # telefone : String
+  + validarCpf() : void
+}
+
+class Cliente {
+  - dataNascimento : LocalDate
+  - objetivo : String
+  - peso : double
+  - altura : double
+  - ativo : boolean
+  - academiaId : String
+  + calcularIMC() : double
+  + classificarImc() : String
+  + calcularIdade() : int
+  + verificarAtivo() : boolean
+}
+
+abstract class Funcionario {
+  - matriculaFunc : String
+  - salario : double
+  - academiaId : String
+  + {abstract} calcularComissao() : double
+  + {abstract} gerarRelatorio() : String
+  + {abstract} getTipo() : String
+}
+
+class Gerente {
+  - nivelAcesso : NivelAcesso
+  - bonusGestao : double
+  + calcularComissao() : double
+  + gerarRelatorio() : String
+  + contratarFuncionario(Academia, Funcionario) : void
+  + demitirFuncionario(Academia, Funcionario) : void
+}
+
+class Instrutor {
+  - cref : String
+  - especialidade : String
+  - cargaHoraria : int
+  + calcularComissao() : double
+  + gerarRelatorio() : String
+  + montarTreino(...) : Treino
+}
+
+class Recepcionista {
+  - turno : TurnoFuncionario
+  - senhaAcesso : String
+  + calcularComissao() : double
+  + gerarRelatorio() : String
+  + registrarAcesso(...) : AcessoRegistro
+}
+
+Pessoa <|-- Cliente
+Pessoa <|-- Funcionario
+Funcionario <|-- Gerente
+Funcionario <|-- Instrutor
+Funcionario <|-- Recepcionista
+
+' ======================= ESTRUTURA DA REDE =======================
+class RedeAcademica {
+  - id : String
+  - nome : String
+  - cnpj : String
+  - site : String
+  + adicionarAcademia(Academia) : void
+  + removerAcademia(String) : boolean
+  + listarAcademias() : List<Academia>
+}
+
+class Academia {
+  - id : String
+  - nome : String
+  - endereco : String
+  - telefone : String
+  - capacidadeMaxima : int
+  - redeId : String
+  - gerenteId : String
+  - ativa : boolean
+  + atribuirGerente(String) : void
+  + listarPlanos(List<Plano>) : List<Plano>
+}
+
+class Plano {
+  - id : String
+  - nome : String
+  - valorMensal : double
+  - duracaoMeses : int
+  - ativo : boolean
+  - academiaId : String
+  + calcularDesconto() : double
+  + isAtivo() : boolean
+}
+
+' ======================= ESTADOS DINAMICOS =======================
+class Matricula <<state machine>> {
+  - id : String
+  - status : StatusMatricula
+  - dataInicio : LocalDate
+  - dataVencimento : LocalDate
+  - clienteId : String
+  - planoId : String
+  - academiaId : String
+  + avancarEstado(StatusMatricula) : void
+  + ativar() / suspender() / cancelar() / renovar()
+}
+
+class Pagamento <<state machine>> {
+  - id : String
+  - status : StatusPagamento
+  - valor : double
+  - dataVencimento : LocalDate
+  - dataPagamento : LocalDate
+  - matriculaId : String
+  + avancarEstado(StatusPagamento) : void
+  + pagar() / cancelar() / verificarAtraso()
+}
+
+' ======================= TREINOS E ACESSOS =======================
+class Treino {
+  - id : String
+  - nome : String
+  - objetivo : String
+  - nivel : NivelTreino
+  - duracaoMinutos : int
+  - clienteId : String
+  - instrutorId : String
+  + adicionarExercicio(Exercicio) : void
+  + calcularCargaTotal() : double
+}
+
+class Exercicio {
+  - nome : String
+  - grupoMuscular : String
+  - series : int
+  - repeticoes : int
+  - carga : double
+  + calcularVolume() : double
+}
+
+class AcessoRegistro {
+  - id : String
+  - clienteId : String
+  - academiaId : String
+  - dataHora : LocalDateTime
+  - tipo : TipoAcesso
+}
+
+' ======================= RELACOES E MULTIPLICIDADES =======================
+RedeAcademica "1" o-- "0..*" Academia : possui
+Academia "1" -- "0..1" Gerente : gerenciada por >
+Academia "1" -- "0..*" Funcionario : emprega >
+Academia "1" -- "0..*" Cliente : atende >
+Academia "1" -- "0..*" Plano : oferece >
+Cliente "1" -- "0..*" Matricula : possui >
+Plano "1" -- "0..*" Matricula : referenciado por >
+Matricula "1" -- "1..*" Pagamento : gera >
+Instrutor "1" -- "0..*" Treino : monta >
+Cliente "1" -- "0..*" Treino : recebe >
+Treino "1" *-- "1..*" Exercicio : composto por >
+Recepcionista "1" -- "0..*" AcessoRegistro : registra >
+Cliente "1" -- "0..*" AcessoRegistro : referente a >
+
+' ======================= ENUMS =======================
+enum StatusMatricula {
+  ATIVA
+  SUSPENSA
+  CANCELADA
+  VENCIDA
+}
+enum StatusPagamento {
+  PENDENTE
+  PAGO
+  ATRASADO
+  CANCELADO
+}
+enum NivelTreino { INICIANTE \n INTERMEDIARIO \n AVANCADO }
+enum TipoAcesso { ENTRADA \n SAIDA }
+enum TurnoFuncionario { MATUTINO \n VESPERTINO \n NOTURNO }
+enum NivelAcesso { OPERACIONAL \n ADMINISTRATIVO \n MASTER }
+
+Matricula ..> StatusMatricula
+Pagamento ..> StatusPagamento
+Treino ..> NivelTreino
+AcessoRegistro ..> TipoAcesso
+Recepcionista ..> TurnoFuncionario
+Gerente ..> NivelAcesso
+
+' ======================= EXCECOES =======================
+package exception {
+  class AcademiaException <<RuntimeException>>
+  class CpfInvalidoException
+  class CpfDuplicadoException
+  class GerenteJaAtribuidoException
+  class AcessoNegadoException
+  class PlanoDeOutraAcademiaException
+  class MatriculaSemPagamentoException
+  class MatriculaInativaException
+  class ClienteInadimplenteException
+  class TransicaoEstadoInvalidaException
+  class AcademiaNaoEncontradaException
+
+  AcademiaException <|-- CpfInvalidoException
+  AcademiaException <|-- CpfDuplicadoException
+  AcademiaException <|-- GerenteJaAtribuidoException
+  AcademiaException <|-- AcessoNegadoException
+  AcademiaException <|-- PlanoDeOutraAcademiaException
+  AcademiaException <|-- MatriculaSemPagamentoException
+  AcademiaException <|-- MatriculaInativaException
+  AcademiaException <|-- ClienteInadimplenteException
+  AcademiaException <|-- TransicaoEstadoInvalidaException
+  AcademiaException <|-- AcademiaNaoEncontradaException
+}
+
+note bottom of exception
+  Camadas de apoio (nao detalhadas no diagrama):
+  - repository/ : 1 repositorio por entidade (persistencia JSON)
+  - service/    : regras de negocio, autorizacao, folha e relatorios
+  - ui/         : menus interativos de terminal
+  - util/       : Json, ValidadorCpf, GeradorId, MapUtil
+end note
+
+@enduml

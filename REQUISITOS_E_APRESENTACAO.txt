@@ -1,0 +1,397 @@
+================================================================================
+ SISTEMA DE GERENCIAMENTO DE REDE DE ACADEMIAS
+ Guia de Requisitos Minimos, Funcionamento e Roteiro de Apresentacao
+ Atividade Unidade 03 - Programacao Orientada a Objetos
+ Prof. Jefferson Gomes Dutra
+================================================================================
+
+Este documento mostra:
+  PARTE 1 - Como o projeto funciona (arquitetura e execucao)
+  PARTE 2 - Onde cada requisito minimo do PDF esta implementado
+  PARTE 3 - Regras de negocio (detalhe)
+  PARTE 4 - Roteiro de teste para a apresentacao (passo a passo)
+
+Todos os caminhos sao relativos a pasta raiz do projeto. O codigo-fonte fica em
+br/com/redeacademia/ e o ponto de entrada e o arquivo Main.java.
+
+
+================================================================================
+ PARTE 1 - COMO O PROJETO FUNCIONA
+================================================================================
+
+VISAO GERAL
+-----------
+O sistema gerencia uma REDE de academias fitness. A rede (raiz administrativa)
+cadastra varias academias; cada academia tem 1 gerente, varios funcionarios,
+clientes e planos proprios. Clientes fazem matriculas em planos, geram pagamentos,
+recebem treinos (montados por instrutores) e registram acessos (na recepcao).
+
+ARQUITETURA EM CAMADAS (separacao de responsabilidades)
+-------------------------------------------------------
+  model/         -> entidades de dominio (as "coisas" do sistema) e enums
+    model/pessoa/   Pessoa (abstract), Cliente, Funcionario (abstract),
+                    Gerente, Instrutor, Recepcionista
+    model/enums/    StatusMatricula, StatusPagamento, NivelTreino, TipoAcesso,
+                    TurnoFuncionario, NivelAcesso
+  exception/     -> excecoes personalizadas (AcademiaException + 10 subclasses)
+  repository/    -> persistencia: 1 repositorio por entidade (le/grava JSON)
+  service/       -> regras de negocio, autorizacao, folha e relatorios
+  ui/            -> menus interativos de terminal
+  util/          -> Json (parser/serializer proprio), ValidadorCpf, GeradorId, MapUtil
+  Main.java      -> ponto de entrada
+
+FLUXO DE INICIALIZACAO (Main.java)
+----------------------------------
+  1. Cria o agregador "Dados" e chama carregar() -> cada repositorio le seu
+     arquivo .json da pasta data/ e reconstroi os objetos em memoria.
+  2. Se nao houver dados (primeira execucao), gera dados de exemplo (SeedDados).
+  3. Aplica a RN07 (vencimentos automaticos) via InicializacaoService.
+  4. Registra um SHUTDOWN HOOK que salva tudo ao encerrar (inclusive Ctrl+C).
+  5. Abre o menu principal (MenuPrincipal).
+
+COMO EXECUTAR
+-------------
+  Pre-requisito: JDK 17 ou superior (desenvolvido/testado no JDK 22).
+
+  Windows (PowerShell), na raiz do projeto:
+    $arquivos = (Get-ChildItem -Recurse -Filter *.java -Path br).FullName + "Main.java"
+    javac -d out $arquivos
+    java -cp out Main
+
+  Linux/macOS/Git Bash:
+    javac -d out $(find br -name "*.java") Main.java
+    java -cp out Main
+
+  IntelliJ IDEA: abrir a pasta, Project SDK 17+, executar a classe Main.
+
+
+================================================================================
+ PARTE 2 - MAPEAMENTO DOS REQUISITOS MINIMOS (onde esta cada um)
+================================================================================
+
+--------------------------------------------------------------------------------
+REQUISITO 1 - MINIMO 11 CLASSES (sem contar enums)  ->  ATENDIDO (14 classes)
+--------------------------------------------------------------------------------
+14 classes de dominio contabilizaveis (enums e excecoes NAO contam):
+
+   1. RedeAcademica .............. br/com/redeacademia/model/RedeAcademica.java
+   2. Academia .................. br/com/redeacademia/model/Academia.java
+   3. Pessoa (abstract) ......... br/com/redeacademia/model/pessoa/Pessoa.java
+   4. Cliente ................... br/com/redeacademia/model/pessoa/Cliente.java
+   5. Funcionario (abstract) .... br/com/redeacademia/model/pessoa/Funcionario.java
+   6. Gerente ................... br/com/redeacademia/model/pessoa/Gerente.java
+   7. Instrutor ................. br/com/redeacademia/model/pessoa/Instrutor.java
+   8. Recepcionista ............. br/com/redeacademia/model/pessoa/Recepcionista.java
+   9. Plano .................... br/com/redeacademia/model/Plano.java
+  10. Matricula (estado) ....... br/com/redeacademia/model/Matricula.java
+  11. Pagamento (estado) ....... br/com/redeacademia/model/Pagamento.java
+  12. Treino .................. br/com/redeacademia/model/Treino.java
+  13. Exercicio .............. br/com/redeacademia/model/Exercicio.java
+  14. AcessoRegistro ......... br/com/redeacademia/model/AcessoRegistro.java
+
+  Alem dessas, ha classes COM COMPORTAMENTO nas camadas de apoio (tambem contam
+  como classes reais, mas nem precisamos delas para chegar a 11):
+   - 11 excecoes (pasta exception/)
+   - 10 repositorios + 1 base (pasta repository/)
+   - 15 services (pasta service/)
+   - 4 utilitarios (pasta util/) e 4 classes de UI (pasta ui/)
+
+--------------------------------------------------------------------------------
+REQUISITO 1a - ENCAPSULAMENTO DE TODAS AS ENTIDADES  ->  ATENDIDO
+--------------------------------------------------------------------------------
+  Todos os atributos das entidades sao private/protected, com acesso por
+  getters/setters. Vários setters VALIDAM os dados antes de atribuir.
+  Exemplos:
+   - Pessoa.java: campos protected, setEmail() valida formato.
+   - Cliente.java: setPeso()/setAltura() rejeitam valores <= 0.
+   - Plano.java: setValorMensal() rejeita negativo, setDuracaoMeses() exige >= 1.
+   - Funcionario.java: setSalario() rejeita negativo.
+
+--------------------------------------------------------------------------------
+REQUISITO 1b - POLIMORFISMO (>= 2 situacoes, ligado a regra de negocio)  -> ATENDIDO
+--------------------------------------------------------------------------------
+  Sao DUAS hierarquias de comportamento polimorfico, com 3 implementacoes cada,
+  declaradas como metodos ABSTRATOS na superclasse Funcionario:
+     br/com/redeacademia/model/pessoa/Funcionario.java
+        linha 30: public abstract double calcularComissao();
+        linha 33: public abstract String  gerarRelatorio();
+
+  Implementacoes proprias (cada cargo calcula diferente):
+     calcularComissao():
+        Gerente.java       -> salario + bonus de gestao + bonus por funcionario ativo
+        Instrutor.java     -> salario + 5% sobre os planos dos alunos acompanhados
+        Recepcionista.java -> salario + adicional fixo + adicional noturno
+     gerarRelatorio():
+        Gerente.java       -> receita, clientes ativos, inadimplentes
+        Instrutor.java     -> alunos, treinos montados, carga media
+        Recepcionista.java -> entradas/saidas e horario de pico
+
+  USO POLIMORFICO (itera List<Funcionario> sem saber o tipo concreto):
+     br/com/redeacademia/service/FuncionarioService.java
+        gerarFolhaPagamento()      -> chama f.calcularComissao() para cada funcionario
+        gerarRelatoriosOperacionais() -> chama f.gerarRelatorio() para cada funcionario
+
+  (Atende as Observacoes 1, 2 e 3 do PDF: heranca de classes proprias; toda
+   subclasse tem atributos/metodos proprios; polimorfismo ligado a regra de negocio.)
+
+--------------------------------------------------------------------------------
+REQUISITO 1c - >= 5 REGRAS DE NEGOCIO  ->  ATENDIDO (7 regras: RN01 a RN07)
+--------------------------------------------------------------------------------
+  Detalhe completo na PARTE 3. Localizacao resumida:
+     RN01 (CPF unico/valido) ... util/ValidadorCpf.java + service/RegrasCpf.java
+     RN02 (plano da academia) .. service/MatriculaService.java (criarMatricula)
+     RN03 (1 gerente/academia) . model/Academia.java (atribuirGerente)
+     RN04 (autorizacao gerente)  model/pessoa/Gerente.java (autorizarOperacaoNa)
+     RN05 (ativa so c/ pagto) .. service/MatriculaService.java (ativarMatricula)
+     RN06 (inadimplente) ....... service/Consultas.java + TreinoService/AcessoService
+     RN07 (vencimento auto) .... service/InicializacaoService.java
+
+--------------------------------------------------------------------------------
+REQUISITO 1d - OPERACOES ENTRE MULTIPLAS CLASSES  ->  ATENDIDO
+--------------------------------------------------------------------------------
+  - Criar matricula: liga Cliente + Plano + Academia + cria Matricula + cria
+    Pagamento, validando RN02.  -> service/MatriculaService.java (criarMatricula)
+  - Folha/relatorios: cruza Funcionario + Matricula + Plano + Pagamento + Treino
+    + AcessoRegistro para montar o contexto.
+    -> service/ContextoFuncionario.java
+  - Contratar funcionario: Gerente + Academia + Funcionario (com autorizacao).
+    -> model/pessoa/Gerente.java (contratarFuncionario) + FuncionarioService.
+
+--------------------------------------------------------------------------------
+REQUISITO 1e - TRATAMENTO DE EXCECOES  ->  ATENDIDO
+--------------------------------------------------------------------------------
+  i) Excecoes PERSONALIZADAS para situacoes reais (pasta exception/):
+     AcademiaException (base, extends RuntimeException)
+       +-- CpfInvalidoException            +-- MatriculaSemPagamentoException
+       +-- CpfDuplicadoException           +-- MatriculaInativaException
+       +-- GerenteJaAtribuidoException     +-- ClienteInadimplenteException
+       +-- AcessoNegadoException           +-- TransicaoEstadoInvalidaException
+       +-- PlanoDeOutraAcademiaException   +-- AcademiaNaoEncontradaException
+
+  ii) VALIDACAO DE DADOS com excecoes:
+     - CPF invalido -> CpfInvalidoException (ValidadorCpf, chamado em Pessoa).
+     - Valores invalidos (peso, altura, salario, etc.) -> IllegalArgumentException
+       nos setters das entidades.
+
+  CAPTURA CENTRALIZADA (o sistema NAO cai com erro de regra de negocio):
+     ui/MenuPrincipal.java e ui/MenuAcademia.java capturam AcademiaException
+     (e validacoes) e exibem mensagem amigavel, mantendo o programa rodando.
+
+  Tambem ha try-with-resources com IOException na persistencia (repository/).
+
+--------------------------------------------------------------------------------
+REQUISITO 1f - DIAGRAMA DE CLASSES (UML)  ->  ATENDIDO
+--------------------------------------------------------------------------------
+  - Diagrama completo (todas as classes, atributos, metodos, relacoes,
+    multiplicidades, enums e hierarquia de excecoes):
+        docs/diagrama-classes.puml   (formato PlantUML)
+    Para visualizar: cole o conteudo em https://www.planttext.com
+  - Versao resumida (renderiza direto no GitHub): secao "Diagrama de Classes"
+    do README.md (formato Mermaid).
+
+--------------------------------------------------------------------------------
+REQUISITO 1g - SALVAR INFORMACOES EM ARQUIVOS  ->  ATENDIDO
+--------------------------------------------------------------------------------
+  i) Registrar em arquivos: cada repositorio grava sua entidade em um arquivo de
+     texto .txt na pasta data/ (rede, academias, clientes, funcionarios, planos,
+     matriculas, pagamentos, treinos, acessos). O conteudo e texto em formato JSON.
+  ii) Carregar ao iniciar: Dados.carregar() le todos os arquivos no inicio
+      (chamado em Main.java).
+  Implementacao da E/S (modelo visto em aula, pacote java.io):
+     repository/Repositorio.java e repository/RedeRepository.java usam
+        - FileWriter + BufferedWriter para GRAVAR
+        - FileReader + BufferedReader para LER (readLine, linha a linha)
+        - try-with-resources (fecha o arquivo automaticamente)
+        - tratamento de IOException (excecao checada)
+  Formato: JSON (texto), serializado/parseado por util/Json.java (escrito do zero,
+  sem bibliotecas). Funcionarios usam o campo "tipo" para desserializacao
+  POLIMORFICA correta (Gerente/Instrutor/Recepcionista).
+
+--------------------------------------------------------------------------------
+REQUISITO 1h - >= 1 CLASSE COM ESTADO DINAMICO  ->  ATENDIDO (2 classes)
+--------------------------------------------------------------------------------
+  Matricula (model/Matricula.java) - estados: ATIVA, SUSPENSA, CANCELADA, VENCIDA
+  Pagamento (model/Pagamento.java) - estados: PENDENTE, PAGO, ATRASADO, CANCELADO
+
+  Cada classe tem um mapa de transicoes permitidas e o metodo:
+        avancarEstado(novoEstado)   (Matricula.java:60 / Pagamento.java:59)
+  que VALIDA a transicao antes de mudar o status. Transicoes proibidas
+  (ex.: CANCELADA -> ATIVA) lancam TransicaoEstadoInvalidaException.
+
+  Transicoes da Matricula:
+     (criacao) -> SUSPENSA ; SUSPENSA->ATIVA/CANCELADA ;
+     ATIVA->SUSPENSA/VENCIDA/CANCELADA ; VENCIDA->ATIVA/CANCELADA ;
+     CANCELADA = estado final.
+  Transicoes do Pagamento:
+     (criacao) -> PENDENTE ; PENDENTE->PAGO/ATRASADO/CANCELADO ;
+     ATRASADO->PAGO(com multa)/CANCELADO ; PAGO->CANCELADO ;
+     CANCELADO = estado final.
+
+--------------------------------------------------------------------------------
+REQUISITO 2 - APRESENTACAO E INTERACAO COM O USUARIO  ->  ATENDIDO
+--------------------------------------------------------------------------------
+  - Sistema funcionando: compila e roda no JDK 17+ (ver PARTE 1 / PARTE 4).
+  - Interacao via TERMINAL com menus numerados:
+        ui/MenuPrincipal.java  (nivel rede: academias, relatorio consolidado)
+        ui/MenuAcademia.java   (dentro da academia: funcionarios, clientes,
+                                planos, matriculas/pagamentos, treinos, acessos)
+        ui/Console.java        (leitura validada de texto, numeros, datas e enums)
+
+--------------------------------------------------------------------------------
+OBSERVACOES DO PDF  ->  TODAS ATENDIDAS
+--------------------------------------------------------------------------------
+  Obs.1 Heranca/polimorfismo de classes proprias: a hierarquia Pessoa/Funcionario
+        e 100% de classes do projeto (nenhuma heranca de biblioteca).
+  Obs.2 Subclasses tem membros proprios:
+        Cliente (dataNascimento, peso, altura, calcularIMC...), Gerente
+        (nivelAcesso, bonusGestao, contratarFuncionario...), Instrutor (cref,
+        especialidade, montarTreino...), Recepcionista (turno, registrarAcesso...).
+  Obs.3 Polimorfismo ligado a regra de negocio: calcularComissao() e
+        gerarRelatorio() (nao sao apenas "imprimir").
+  Obs.4 Enums nao contam nas classes: temos 6 enums (em model/enums/), que NAO
+        entram na contagem; as 14 classes contabilizaveis sao todas reais.
+
+
+================================================================================
+ PARTE 3 - REGRAS DE NEGOCIO (DETALHE)
+================================================================================
+
+  RN01 - CPF UNICO E VALIDO
+     Nenhuma pessoa pode ter CPF invalido (digitos verificadores) nem repetido.
+     Formato/digitos: util/ValidadorCpf.java (validado no construtor de Pessoa).
+     Unicidade: service/RegrasCpf.garantirCpfUnico (em ClienteService e
+     FuncionarioService).  Excecoes: CpfInvalidoException / CpfDuplicadoException.
+
+  RN02 - PLANO EXCLUSIVO DA ACADEMIA
+     Cliente so contrata plano da academia em que esta matriculado.
+     Local: service/MatriculaService.criarMatricula.
+     Excecao: PlanoDeOutraAcademiaException.
+
+  RN03 - 1 GERENTE POR ACADEMIA
+     Cada academia tem no maximo 1 gerente.
+     Local: model/Academia.atribuirGerente.
+     Excecao: GerenteJaAtribuidoException.
+
+  RN04 - AUTORIZACAO DE GERENTE
+     Apenas o gerente DAQUELA academia contrata/demite funcionarios e gerencia
+     planos.  Local: model/pessoa/Gerente.autorizarOperacaoNa (usado em
+     FuncionarioService e PlanoService).  Excecao: AcessoNegadoException.
+
+  RN05 - ATIVACAO DE MATRICULA
+     Matricula so vira ATIVA se existir um Pagamento com status PAGO.
+     Local: service/MatriculaService.ativarMatricula.
+     Excecao: MatriculaSemPagamentoException.
+
+  RN06 - BLOQUEIO POR INADIMPLENCIA
+     Cliente com pagamento ATRASADO nao registra acesso nem recebe novo treino.
+     Local: service/Consultas.clienteInadimplente, aplicado em
+     TreinoService.criarTreino e AcessoService.registrarAcesso.
+     Excecao: ClienteInadimplenteException.
+
+  RN07 - VENCIMENTO AUTOMATICO (na inicializacao)
+     Ao iniciar: pagamentos PENDENTE vencidos viram ATRASADO e matriculas ATIVA
+     vencidas viram VENCIDA.  Local: service/InicializacaoService.aplicarRegrasTemporais
+     (chamado no Main).
+
+  REGRA DE TRANSICAO DE ESTADO (alem das 7)
+     Qualquer transicao proibida nas maquinas de estado (Matricula/Pagamento)
+     lanca TransicaoEstadoInvalidaException.
+
+
+================================================================================
+ PARTE 4 - ROTEIRO DE TESTE PARA A APRESENTACAO
+================================================================================
+
+DICA: na primeira execucao o sistema ja cria dados de exemplo (1 rede, 2
+academias - "Unidade Centro" e "Unidade Norte" -, gerentes, instrutor,
+recepcionista, clientes, planos, matriculas, pagamentos e um treino).
+Assim da para demonstrar tudo sem precisar cadastrar do zero.
+
+PASSO 0 - INICIAR
+   Rode o sistema (ver PARTE 1). Mostre as mensagens iniciais:
+   "[Sistema] Primeira execucao: dados de exemplo gerados." e
+   "[Sistema] RN07 aplicada: ...". -> prova de CARGA + RN07.
+
+PASSO 1 - RELATORIO CONSOLIDADO (interacao entre classes)
+   Menu principal -> opcao 6 (Relatorio consolidado da rede).
+   Mostra receita, clientes ativos e inadimplentes por academia e total.
+   -> requisito 1d (varias classes) e 1a/1b (dados das entidades).
+
+PASSO 2 - POLIMORFISMO: FOLHA DE PAGAMENTO
+   Menu principal -> 3 (Entrar em academia) -> escolha a "Unidade Centro"
+   (copie o ID listado) -> 1 (Funcionarios) -> 6 (Folha de pagamento).
+   Mostra cada cargo com comissao calculada de forma diferente.
+   -> requisito 1b (calcularComissao polimorfico).
+
+PASSO 3 - POLIMORFISMO: RELATORIOS OPERACIONAIS
+   Ainda em Funcionarios -> 7 (Relatorios operacionais).
+   Cada cargo gera um relatorio com formato proprio.
+   -> requisito 1b (gerarRelatorio polimorfico).
+
+PASSO 4 - EXCECAO / VALIDACAO: CPF (RN01)
+   Academia -> 2 (Clientes) -> 1 (Cadastrar).
+   Digite um CPF invalido (ex.: 111.111.111-11) -> aparece
+   "[!] CPF invalido ...". Repita usando o CPF de um cliente ja existente ->
+   "[!] Ja existe uma pessoa cadastrada com o CPF ...".
+   -> requisito 1e (excecao personalizada + validacao) e RN01.
+      Observe que o sistema NAO trava: volta ao menu.
+
+PASSO 5 - RN03: GERENTE JA ATRIBUIDO
+   Academia (Unidade Centro, que ja tem gerente) -> 1 (Funcionarios) ->
+   1 (Atribuir gerente). Preencha qualquer dado valido.
+   Resultado: "[!] A academia 'Unidade Centro' ja possui um gerente atribuido."
+   -> RN03 (GerenteJaAtribuidoException).
+
+PASSO 6 - RN05: ATIVAR MATRICULA SEM PAGAMENTO
+   Academia -> 4 (Matriculas e Pagamentos) -> 2 (Listar matriculas).
+   Identifique a matricula da cliente "Maria" (status SUSPENSA, pagamento
+   PENDENTE). Volte e use 4 (Ativar matricula) com o ID dela.
+   Resultado: "[!] A matricula nao pode ser ativada sem um pagamento PAGO."
+   -> RN05 (MatriculaSemPagamentoException).
+
+PASSO 7 - FLUXO FELIZ DE PAGAMENTO + ATIVACAO (estado dinamico)
+   Em Matriculas e Pagamentos:
+     - 3 (Registrar pagamento): informe o ID do pagamento PENDENTE da Maria ->
+       vira PAGO.
+     - 4 (Ativar matricula): informe o ID da matricula da Maria -> vira ATIVA.
+   -> requisito 1h: transicoes validas Pagamento PENDENTE->PAGO e
+      Matricula SUSPENSA->ATIVA.
+
+PASSO 8 - TRANSICAO DE ESTADO INVALIDA
+   Pegue a matricula ATIVA do "Joao" (3 ou apos o passo 7, a da Maria):
+     - 6 (Cancelar matricula) com o ID -> vira CANCELADA.
+     - tente 5 (Suspender matricula) com o MESMO ID.
+   Resultado: "[!] Transicao de estado invalida em Matricula: CANCELADA -> SUSPENSA."
+   -> requisito 1h (validacao de transicao / TransicaoEstadoInvalidaException).
+
+PASSO 9 - PERSISTENCIA + EDICAO (salvar/carregar)
+   a) Academia -> 2 (Clientes) -> 4 (Atualizar): edite o nome/peso de um cliente.
+   b) Volte ao menu principal e escolha 7 (Salvar dados agora) -> grava os .json.
+      (Tambem ocorre automaticamente ao sair pela opcao 0.)
+   c) Abra a pasta data/ e mostre, por exemplo, clientes.txt com a alteracao.
+   d) Saia (0) e RODE O SISTEMA DE NOVO: note que NAO aparece "Primeira execucao"
+      (os dados foram carregados) e o cliente continua com o nome editado.
+   -> requisito 1g (registrar + carregar) e capacidade de EDICAO de dados.
+
+PASSO 10 (opcional) - RN07 AO VIVO
+   Antes de iniciar, edite em data/pagamentos.txt a "dataVencimento" de um
+   pagamento PENDENTE para uma data passada e salve. Inicie o sistema:
+   a mensagem "RN07 aplicada: 1 pagamento(s) -> ATRASADO ..." aparece.
+   Em seguida, tente registrar um acesso desse cliente (Academia -> 6 (Acessos)
+   -> 1 (Registrar acesso)): sera bloqueado com
+   "[!] Operacao bloqueada: o cliente '...' possui pagamento em atraso."
+   -> RN07 (vencimento automatico) + RN06 (bloqueio por inadimplencia).
+
+OBSERVACAO SOBRE RN02 e RN04
+   No menu, ao criar matricula so aparecem clientes/planos da MESMA academia, e
+   ao contratar/demitir o sistema usa automaticamente o gerente correto da
+   unidade. Por isso essas duas regras estao sempre satisfeitas pela navegacao.
+   A PROTECAO existe no codigo (MatriculaService.criarMatricula lanca
+   PlanoDeOutraAcademiaException; Gerente.autorizarOperacaoNa lanca
+   AcessoNegadoException) e foi verificada em testes automatizados durante o
+   desenvolvimento. Se o professor quiser ver a negacao, da para demonstrar
+   chamando esses metodos com dados de academias diferentes.
+
+================================================================================
+ FIM
+================================================================================

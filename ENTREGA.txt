@@ -1,0 +1,38 @@
+ATIVIDADE UNIDADE 03 - PROGRAMACAO ORIENTADA A OBJETOS
+Professor: Jefferson Gomes Dutra
+Tema: Sistema de Gerenciamento de Rede de Academias
+
+==============================================================
+INTEGRANTES DO GRUPO (preencher)
+==============================================================
+1) Nome: ______________________________  Matricula: ____________
+2) Nome: ______________________________  Matricula: ____________
+3) Nome: ______________________________  Matricula: ____________
+4) Nome: ______________________________  Matricula: ____________
+
+==============================================================
+REPOSITORIO
+==============================================================
+Link do repositorio: ____________________________________________
+
+==============================================================
+COMO RODAR A APLICACAO
+==============================================================
+Pre-requisito: JDK 17 ou superior (testado com JDK 22).
+
+Terminal (Windows / PowerShell), a partir da raiz do projeto:
+    $arquivos = (Get-ChildItem -Recurse -Filter *.java -Path br).FullName + "Main.java"
+    javac -d out $arquivos
+    java -cp out Main
+
+Terminal (Linux / macOS / Git Bash):
+    javac -d out $(find br -name "*.java") Main.java
+    java -cp out Main
+
+IntelliJ IDEA:
+    Abrir a pasta do projeto, garantir Project SDK 17+ e executar a classe Main.
+
+Observacao: na primeira execucao o sistema gera dados de exemplo automaticamente.
+Os dados sao salvos na pasta data/ ao encerrar (opcao 0 do menu ou Ctrl+C).
+
+As instrucoes detalhadas estao no README.md.

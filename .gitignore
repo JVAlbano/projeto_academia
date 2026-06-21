@@ -6,5 +6,11 @@
 out/
 *.class
 
+# Dados gerados em runtime (regenerados na primeira execucao)
+data/
+
+# Config local do VS Code (caminho de JDK especifico da maquina)
+.vscode/
+
 # Logs e temporários
 *.log

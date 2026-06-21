@@ -1,31 +1,41 @@
-import enums.TipoFuncionario;
-import model.Cliente;
-import model.Filial;
-import model.Funcionario;
-import model.Plano;
+import br.com.redeacademia.service.Dados;
+import br.com.redeacademia.service.SeedDados;
+import br.com.redeacademia.ui.Console;
+import br.com.redeacademia.ui.MenuPrincipal;
+import br.com.redeacademia.ui.Servicos;
 
-import java.time.LocalDate;
-
+/**
+ * Ponto de entrada do Sistema de Gerenciamento de Rede de Academias.
+ *
+ * <p>Fluxo de inicializacao:</p>
+ * <ol>
+ *   <li>carrega o estado dos arquivos JSON em /data;</li>
+ *   <li>na primeira execucao (sem dados), gera dados de exemplo;</li>
+ *   <li>aplica as regras temporais automaticas (RN07);</li>
+ *   <li>registra um shutdown hook que persiste tudo ao encerrar;</li>
+ *   <li>inicia o menu interativo de terminal.</li>
+ * </ol>
+ */
 public class Main {
+
     public static void main(String[] args) {
-        Filial filial = new Filial("F1", "Academia Centro", "Rua Principal, 100", "(11) 1111-1111", 200);
+        Dados dados = new Dados();
+        dados.carregar();
+        Servicos servicos = new Servicos(dados);
 
-        Plano plano = new Plano("P1", "Plano Anual", "Acesso completo por 12 meses",
-                120.0, 12, true, false, filial.getId());
+        if (!dados.possuiRede() && dados.academias().quantidade() == 0) {
+            new SeedDados(dados).popular();
+            System.out.println("[Sistema] Primeira execucao: dados de exemplo gerados.");
+        }
 
-        Funcionario funcionario = new Funcionario("FU1", "Maria Souza", "111.111.111-11",
-                "(11) 2222-2222", "maria@academia.com", TipoFuncionario.INSTRUTOR,
-                2500.0, LocalDate.of(2023, 3, 1), "Musculação");
+        System.out.println("[Sistema] " + servicos.inicializacao.aplicarRegrasTemporais());
 
-        Cliente cliente = new Cliente("C1", "João Silva", "222.222.222-22",
-                "(11) 3333-3333", "joao@email.com", LocalDate.of(1995, 7, 20),
-                "Nenhuma restrição");
+        // Persiste o estado ao encerrar (inclusive com Ctrl+C).
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            dados.salvar();
+            System.out.println("\n[Sistema] Dados salvos em /data. Ate logo!");
+        }));
 
-        System.out.println(filial);
-        System.out.println(funcionario);
-        System.out.println(funcionario.calcularRemuneracao());
-        System.out.println(cliente);
-        System.out.printf("Plano %s - Valor total: R$%.2f%n", plano.getNome(), plano.calcularValorTotal());
-        System.out.printf("Com 10%% de desconto: R$%.2f%n", plano.calcularValorComDesconto(10));
+        new MenuPrincipal(new Console(), servicos).exibir();
     }
 }
