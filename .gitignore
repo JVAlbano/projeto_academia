@@ -12,5 +12,8 @@ data/
 # Config local do VS Code (caminho de JDK especifico da maquina)
 .vscode/
 
+# Ferramentas/config locais do editor
+.claude/
+
 # Logs e temporários
 *.log
