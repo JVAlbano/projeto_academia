@@ -186,10 +186,25 @@ enum StatusPagamento {
   ATRASADO
   CANCELADO
 }
-enum NivelTreino { INICIANTE \n INTERMEDIARIO \n AVANCADO }
-enum TipoAcesso { ENTRADA \n SAIDA }
-enum TurnoFuncionario { MATUTINO \n VESPERTINO \n NOTURNO }
-enum NivelAcesso { OPERACIONAL \n ADMINISTRATIVO \n MASTER }
+enum NivelTreino {
+  INICIANTE
+  INTERMEDIARIO
+  AVANCADO
+}
+enum TipoAcesso {
+  ENTRADA
+  SAIDA
+}
+enum TurnoFuncionario {
+  MATUTINO
+  VESPERTINO
+  NOTURNO
+}
+enum NivelAcesso {
+  OPERACIONAL
+  ADMINISTRATIVO
+  MASTER
+}
 
 Matricula ..> StatusMatricula
 Pagamento ..> StatusPagamento
