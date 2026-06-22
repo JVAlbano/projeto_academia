@@ -5,6 +5,7 @@ import br.com.redeacademia.model.Matricula;
 import br.com.redeacademia.model.Pagamento;
 import br.com.redeacademia.model.Plano;
 import br.com.redeacademia.model.Treino;
+import br.com.redeacademia.model.enums.AbrangenciaPlano;
 import br.com.redeacademia.model.enums.NivelAcesso;
 import br.com.redeacademia.model.enums.NivelTreino;
 import br.com.redeacademia.model.enums.TurnoFuncionario;
@@ -59,6 +60,8 @@ public class SeedDados {
         // ---- Unidade Centro: planos ----
         Plano anual = planoSvc.criar(ana, centro, "Plano Anual", 100, 12);
         Plano mensal = planoSvc.criar(ana, centro, "Plano Mensal", 130, 1);
+        // Plano REDE: da acesso a todas as academias.
+        Plano planoRede = planoSvc.criar(ana, centro, "Plano Rede Total", 180, 12, AbrangenciaPlano.REDE);
 
         // ---- Unidade Centro: clientes ----
         Cliente joao = cli.cadastrar(centro.getId(), "Joao Silva", ValidadorCpf.gerarValido("123456789"),
@@ -87,7 +90,13 @@ public class SeedDados {
                 "davi@redefit.com", "(11) 90000-0010", "G-002", 5800, norte.getId(), NivelAcesso.ADMINISTRATIVO, 0.20);
         func.contratarGerente(norte, davi);
         planoSvc.criar(davi, norte, "Plano Trimestral", 115, 3);
-        cli.cadastrar(norte.getId(), "Lia Costa", ValidadorCpf.gerarValido("222333444"),
+        Cliente lia = cli.cadastrar(norte.getId(), "Lia Costa", ValidadorCpf.gerarValido("222333444"),
                 "lia@email.com", "(11) 98888-0010", LocalDate.of(1998, 11, 5), "Condicionamento", 70, 1.70);
+
+        // Lia (Norte) assina o plano REDE da Centro e fica ativa: acesso em qualquer unidade.
+        Matricula mLia = matSvc.criarMatricula(lia.getId(), planoRede.getId());
+        Pagamento pLia = pagSvc.listarPorMatricula(mLia.getId()).get(0);
+        pagSvc.registrarPagamento(pLia.getId());
+        matSvc.ativarMatricula(mLia.getId());
     }
 }

@@ -1,8 +1,12 @@
 package br.com.redeacademia.model;
 
+import br.com.redeacademia.model.enums.AbrangenciaPlano;
+
 /**
- * Plano de assinatura exclusivo de uma academia. Define valor mensal, duracao e
- * regra de desconto progressivo conforme a duracao do contrato.
+ * Plano de assinatura oferecido por uma academia. Define valor mensal, duracao e
+ * regra de desconto progressivo conforme a duracao do contrato. A abrangencia
+ * determina se o acesso vale apenas na academia que oferece o plano (ACADEMIA)
+ * ou em toda a rede (REDE).
  */
 public class Plano {
 
@@ -12,13 +16,20 @@ public class Plano {
     private int duracaoMeses;
     private boolean ativo;
     private final String academiaId;
+    private final AbrangenciaPlano abrangencia;
 
     public Plano(String id, String nome, double valorMensal, int duracaoMeses, String academiaId) {
+        this(id, nome, valorMensal, duracaoMeses, academiaId, AbrangenciaPlano.ACADEMIA);
+    }
+
+    public Plano(String id, String nome, double valorMensal, int duracaoMeses, String academiaId,
+                 AbrangenciaPlano abrangencia) {
         this.id = id;
         this.nome = nome;
         setValorMensal(valorMensal);
         setDuracaoMeses(duracaoMeses);
         this.academiaId = academiaId;
+        this.abrangencia = abrangencia == null ? AbrangenciaPlano.ACADEMIA : abrangencia;
         this.ativo = true;
     }
 
@@ -91,9 +102,22 @@ public class Plano {
         return academiaId;
     }
 
+    public AbrangenciaPlano getAbrangencia() {
+        return abrangencia;
+    }
+
+    public boolean isRede() {
+        return abrangencia == AbrangenciaPlano.REDE;
+    }
+
+    /** @return true se o plano libera acesso na academia informada (planos REDE cobrem todas). */
+    public boolean cobreAcademia(String academiaId) {
+        return isRede() || this.academiaId.equals(academiaId);
+    }
+
     @Override
     public String toString() {
-        return String.format("Plano{id=%s, nome=%s, valorMensal=R$%.2f, duracao=%d meses}",
-                id, nome, valorMensal, duracaoMeses);
+        return String.format("Plano{id=%s, nome=%s, valorMensal=R$%.2f, duracao=%d meses, abrangencia=%s}",
+                id, nome, valorMensal, duracaoMeses, abrangencia);
     }
 }

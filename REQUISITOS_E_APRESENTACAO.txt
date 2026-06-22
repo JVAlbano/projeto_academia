@@ -32,7 +32,7 @@ ARQUITETURA EM CAMADAS (separacao de responsabilidades)
     model/pessoa/   Pessoa (abstract), Cliente, Funcionario (abstract),
                     Gerente, Instrutor, Recepcionista
     model/enums/    StatusMatricula, StatusPagamento, NivelTreino, TipoAcesso,
-                    TurnoFuncionario, NivelAcesso
+                    TurnoFuncionario, NivelAcesso, AbrangenciaPlano
   exception/     -> excecoes personalizadas (AcademiaException + 10 subclasses)
   repository/    -> persistencia: 1 repositorio por entidade (le/grava JSON)
   service/       -> regras de negocio, autorizacao, folha e relatorios
@@ -135,7 +135,7 @@ REQUISITO 1b - POLIMORFISMO (>= 2 situacoes, ligado a regra de negocio)  -> ATEN
    subclasse tem atributos/metodos proprios; polimorfismo ligado a regra de negocio.)
 
 --------------------------------------------------------------------------------
-REQUISITO 1c - >= 5 REGRAS DE NEGOCIO  ->  ATENDIDO (7 regras: RN01 a RN07)
+REQUISITO 1c - >= 5 REGRAS DE NEGOCIO  ->  ATENDIDO (8 regras: RN01 a RN08)
 --------------------------------------------------------------------------------
   Detalhe completo na PARTE 3. Localizacao resumida:
      RN01 (CPF unico/valido) ... util/ValidadorCpf.java + service/RegrasCpf.java
@@ -145,6 +145,7 @@ REQUISITO 1c - >= 5 REGRAS DE NEGOCIO  ->  ATENDIDO (7 regras: RN01 a RN07)
      RN05 (ativa so c/ pagto) .. service/MatriculaService.java (ativarMatricula)
      RN06 (inadimplente) ....... service/Consultas.java + TreinoService/AcessoService
      RN07 (vencimento auto) .... service/InicializacaoService.java
+     RN08 (cobertura de acesso)  service/Consultas.java + service/AcessoService.java
 
 --------------------------------------------------------------------------------
 REQUISITO 1d - OPERACOES ENTRE MULTIPLAS CLASSES  ->  ATENDIDO
@@ -248,7 +249,7 @@ OBSERVACOES DO PDF  ->  TODAS ATENDIDAS
         especialidade, montarTreino...), Recepcionista (turno, registrarAcesso...).
   Obs.3 Polimorfismo ligado a regra de negocio: calcularComissao() e
         gerarRelatorio() (nao sao apenas "imprimir").
-  Obs.4 Enums nao contam nas classes: temos 6 enums (em model/enums/), que NAO
+  Obs.4 Enums nao contam nas classes: temos 7 enums (em model/enums/), que NAO
         entram na contagem; as 14 classes contabilizaveis sao todas reais.
 
 
@@ -262,10 +263,12 @@ OBSERVACOES DO PDF  ->  TODAS ATENDIDAS
      Unicidade: service/RegrasCpf.garantirCpfUnico (em ClienteService e
      FuncionarioService).  Excecoes: CpfInvalidoException / CpfDuplicadoException.
 
-  RN02 - PLANO EXCLUSIVO DA ACADEMIA
-     Cliente so contrata plano da academia em que esta matriculado.
+  RN02 - PLANO DA ACADEMIA (com excecao para planos de REDE)
+     Cliente so contrata plano da academia em que esta matriculado, EXCETO
+     planos de abrangencia REDE, que podem ser contratados por qualquer cliente
+     da rede (Plano.abrangencia == REDE).
      Local: service/MatriculaService.criarMatricula.
-     Excecao: PlanoDeOutraAcademiaException.
+     Excecao: PlanoDeOutraAcademiaException (so para planos ACADEMIA de outra unidade).
 
   RN03 - 1 GERENTE POR ACADEMIA
      Cada academia tem no maximo 1 gerente.
@@ -293,7 +296,15 @@ OBSERVACOES DO PDF  ->  TODAS ATENDIDAS
      vencidas viram VENCIDA.  Local: service/InicializacaoService.aplicarRegrasTemporais
      (chamado no Main).
 
-  REGRA DE TRANSICAO DE ESTADO (alem das 7)
+  RN08 - COBERTURA DE ACESSO (plano REDE da acesso a todas as academias)
+     Um cliente so registra acesso (catraca) numa academia se possui ao menos
+     UMA matricula ATIVA cujo plano cobre aquela unidade:
+        - plano de abrangencia ACADEMIA -> cobre apenas a academia do plano;
+        - plano de abrangencia REDE      -> cobre QUALQUER academia da rede.
+     Local: service/Consultas.clienteTemAcessoNa, aplicado em
+     AcessoService.registrarAcesso.  Excecao: AcessoNegadoException (semCobertura).
+
+  REGRA DE TRANSICAO DE ESTADO (alem das 8)
      Qualquer transicao proibida nas maquinas de estado (Matricula/Pagamento)
      lanca TransicaoEstadoInvalidaException.
 
@@ -306,6 +317,11 @@ DICA: na primeira execucao o sistema ja cria dados de exemplo (1 rede, 2
 academias - "Unidade Centro" e "Unidade Norte" -, gerentes, instrutor,
 recepcionista, clientes, planos, matriculas, pagamentos e um treino).
 Assim da para demonstrar tudo sem precisar cadastrar do zero.
+
+Entre os planos da "Unidade Centro" ha um "Plano Rede Total" de abrangencia REDE
+(da acesso a TODAS as academias). A cliente "Lia Costa" (cadastrada na "Unidade
+Norte") ja vem matriculada e ATIVA nesse plano da Centro - exemplo pronto de
+matricula entre academias (RN02) e de acesso multi-unidade (RN08).
 
 PASSO 0 - INICIAR
    Rode o sistema (ver PARTE 1). Mostre as mensagens iniciais:
@@ -382,15 +398,45 @@ PASSO 10 (opcional) - RN07 AO VIVO
    "[!] Operacao bloqueada: o cliente '...' possui pagamento em atraso."
    -> RN07 (vencimento automatico) + RN06 (bloqueio por inadimplencia).
 
-OBSERVACAO SOBRE RN02 e RN04
-   No menu, ao criar matricula so aparecem clientes/planos da MESMA academia, e
-   ao contratar/demitir o sistema usa automaticamente o gerente correto da
-   unidade. Por isso essas duas regras estao sempre satisfeitas pela navegacao.
-   A PROTECAO existe no codigo (MatriculaService.criarMatricula lanca
-   PlanoDeOutraAcademiaException; Gerente.autorizarOperacaoNa lanca
-   AcessoNegadoException) e foi verificada em testes automatizados durante o
-   desenvolvimento. Se o professor quiser ver a negacao, da para demonstrar
-   chamando esses metodos com dados de academias diferentes.
+PASSO 11 - PLANO DE REDE: ACESSO A TODAS AS ACADEMIAS (RN02 + RN08)
+   a) PLANO VISIVEL EM QUALQUER UNIDADE:
+      Entre na "Unidade Norte" -> 3 (Planos) -> 2 (Listar).
+      Mesmo tendo sido criado na "Unidade Centro", o "Plano Rede Total" aparece
+      aqui, marcado como [REDE] (planos REDE ficam disponiveis em todas as
+      unidades). Os planos [ACADEMIA] so aparecem na sua propria unidade.
+   b) ACESSO MULTI-UNIDADE (RN08 liberando):
+      A cliente "Lia Costa" e da "Unidade Norte", mas tem matricula ATIVA no
+      plano REDE. Primeiro, ainda na "Unidade Norte" -> 2 (Clientes) -> 2
+      (Listar) e COPIE o ID da Lia. Depois volte e entre na "Unidade Centro" ->
+      6 (Acessos) -> 1 (Registrar acesso) -> cole o ID da Lia -> ENTRADA.
+      (A lista de clientes mostra so os da unidade atual, por isso copiamos o ID
+      antes; o registro aceita o ID de qualquer cliente da rede.)
+      O acesso e ACEITO mesmo ela sendo de outra unidade, porque o plano REDE
+      cobre a Centro.
+      -> RN08 liberando + RN02 (matricula entre academias permitida p/ plano REDE).
+   c) (opcional) MATRICULAR NO PLANO REDE PELO MENU:
+      Na "Unidade Norte" -> 4 (Matriculas e Pagamentos) -> 1 (Criar matricula):
+      um cliente da Norte consegue escolher o "Plano Rede Total" (da Centro) sem
+      cair em PlanoDeOutraAcademiaException - exatamente a excecao de REDE da RN02.
+
+PASSO 12 - RN08: ACESSO NEGADO SEM COBERTURA
+   Pegue um cliente SEM matricula ATIVA que cubra a unidade. Ex.: a "Maria"
+   ANTES do passo 7 (matricula SUSPENSA), ou um cliente recem-cadastrado.
+   Na academia dele -> 6 (Acessos) -> 1 (Registrar acesso) -> escolha esse cliente.
+   Resultado: "[!] Acesso negado: <nome> nao possui matricula ativa que cubra
+   esta academia."
+   -> RN08 (cobertura de acesso / AcessoNegadoException.semCobertura).
+   DICA: o mesmo cliente, apos ter a matricula ativada (passo 7) ou apos assinar
+   um plano REDE, passa a registrar acesso normalmente.
+
+OBSERVACAO SOBRE RN04 (autorizacao de gerente)
+   No menu, ao contratar/demitir o sistema usa automaticamente o gerente correto
+   da unidade, entao a regra esta sempre satisfeita pela navegacao. A PROTECAO
+   existe no codigo (Gerente.autorizarOperacaoNa lanca AcessoNegadoException) e
+   foi verificada em testes automatizados durante o desenvolvimento. Se o
+   professor quiser ver a negacao, da para demonstrar chamando esse metodo com um
+   gerente de outra academia.
+   (A RN02 ja e demonstravel ao vivo nos passos 11 e 12.)
 
 ================================================================================
  FIM

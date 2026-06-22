@@ -100,8 +100,11 @@ class Plano {
   - duracaoMeses : int
   - ativo : boolean
   - academiaId : String
+  - abrangencia : AbrangenciaPlano
   + calcularDesconto() : double
   + isAtivo() : boolean
+  + isRede() : boolean
+  + cobreAcademia(String) : boolean
 }
 
 ' ======================= ESTADOS DINAMICOS =======================
@@ -205,6 +208,10 @@ enum NivelAcesso {
   ADMINISTRATIVO
   MASTER
 }
+enum AbrangenciaPlano {
+  ACADEMIA
+  REDE
+}
 
 Matricula ..> StatusMatricula
 Pagamento ..> StatusPagamento
@@ -212,6 +219,7 @@ Treino ..> NivelTreino
 AcessoRegistro ..> TipoAcesso
 Recepcionista ..> TurnoFuncionario
 Gerente ..> NivelAcesso
+Plano ..> AbrangenciaPlano
 
 ' ======================= EXCECOES =======================
 package exception {

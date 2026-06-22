@@ -1,10 +1,12 @@
 package br.com.redeacademia.ui;
 
 import br.com.redeacademia.model.Academia;
+import br.com.redeacademia.model.Exercicio;
 import br.com.redeacademia.model.Matricula;
 import br.com.redeacademia.model.Pagamento;
 import br.com.redeacademia.model.Plano;
 import br.com.redeacademia.model.Treino;
+import br.com.redeacademia.model.enums.AbrangenciaPlano;
 import br.com.redeacademia.model.enums.NivelAcesso;
 import br.com.redeacademia.model.enums.NivelTreino;
 import br.com.redeacademia.model.enums.TipoAcesso;
@@ -15,6 +17,7 @@ import br.com.redeacademia.model.pessoa.Gerente;
 import br.com.redeacademia.model.pessoa.Instrutor;
 import br.com.redeacademia.model.pessoa.Recepcionista;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Menu de operacoes no contexto de uma academia selecionada. */
@@ -95,7 +98,7 @@ public class MenuAcademia {
                 console.lerTextoObrigatorio("CPF"),
                 console.lerTexto("E-mail"),
                 console.lerTexto("Telefone"),
-                console.lerTextoObrigatorio("Matricula funcional"),
+                console.lerTextoObrigatorio("Matricula funcionário"),
                 console.lerDouble("Salario"),
                 academia.getId(),
                 console.lerEnum("Nivel de acesso", NivelAcesso.class),
@@ -112,7 +115,7 @@ public class MenuAcademia {
                 console.lerTextoObrigatorio("CPF"),
                 console.lerTexto("E-mail"),
                 console.lerTexto("Telefone"),
-                console.lerTextoObrigatorio("Matricula funcional"),
+                console.lerTextoObrigatorio("Matricula funcionário"),
                 console.lerDouble("Salario"),
                 academia.getId(),
                 console.lerTexto("CREF"),
@@ -130,7 +133,7 @@ public class MenuAcademia {
                 console.lerTextoObrigatorio("CPF"),
                 console.lerTexto("E-mail"),
                 console.lerTexto("Telefone"),
-                console.lerTextoObrigatorio("Matricula funcional"),
+                console.lerTextoObrigatorio("Matricula funcionário"),
                 console.lerDouble("Salario"),
                 academia.getId(),
                 console.lerEnum("Turno", TurnoFuncionario.class),
@@ -214,6 +217,30 @@ public class MenuAcademia {
                 console.lerDouble("Altura (m)"));
         console.sucesso(String.format("Cliente cadastrado: %s (IMC %.1f - %s)",
                 c.getNome(), c.calcularIMC(), c.classificarImc()));
+        vincularPlanoNoCadastro(c);
+    }
+
+    /** Logo apos cadastrar o cliente, ja escolhe o plano e cria a matricula (fluxo unico). */
+    private void vincularPlanoNoCadastro(Cliente cliente) {
+        if (s.planos.listarPorAcademia(academia.getId()).isEmpty()) {
+            console.msg("(Nenhum plano cadastrado nesta academia - cadastre um plano no menu Planos e depois crie a matricula.)");
+            return;
+        }
+        console.titulo("Plano do cliente");
+        Plano plano = selecionarPlano(true);
+        if (plano == null) {
+            console.msg("Cliente cadastrado sem plano. Voce pode matricula-lo depois em Matriculas.");
+            return;
+        }
+        Matricula m = s.matriculas.criarMatricula(cliente.getId(), plano.getId());
+        console.sucesso(String.format("Matricula criada (%s) no plano '%s' [%s]. Pagamento inicial PENDENTE.",
+                m.getStatus(), plano.getNome(), plano.getAbrangencia()));
+        if (console.confirmar("Registrar o pagamento e ativar a matricula agora?")) {
+            Pagamento pagamento = s.pagamentos.listarPorMatricula(m.getId()).get(0);
+            s.pagamentos.registrarPagamento(pagamento.getId());
+            s.matriculas.ativarMatricula(m.getId());
+            console.sucesso("Pagamento registrado e matricula ATIVADA.");
+        }
     }
 
     private void listarClientes() {
@@ -272,11 +299,14 @@ public class MenuAcademia {
 
     private void criarPlano() {
         Gerente atuante = s.funcionarios.buscarGerenteDaAcademia(academia);
-        Plano p = s.planos.criar(atuante, academia,
-                console.lerTextoObrigatorio("Nome do plano"),
-                console.lerDouble("Valor mensal"),
-                console.lerInt("Duracao (meses)"));
-        console.sucesso(String.format("Plano criado: %s (desconto %.0f%%)", p.getNome(), p.calcularDesconto() * 100));
+        String nome = console.lerTextoObrigatorio("Nome do plano");
+        double valor = console.lerDouble("Valor mensal");
+        int duracao = console.lerInt("Duracao (meses)");
+        AbrangenciaPlano abrangencia = console.lerEnum("Abrangencia (REDE da acesso a todas as academias)",
+                AbrangenciaPlano.class);
+        Plano p = s.planos.criar(atuante, academia, nome, valor, duracao, abrangencia);
+        console.sucesso(String.format("Plano criado: %s [%s] (desconto %.0f%%)",
+                p.getNome(), p.getAbrangencia(), p.calcularDesconto() * 100));
     }
 
     private void listarPlanos() {
@@ -286,8 +316,8 @@ public class MenuAcademia {
             return;
         }
         for (Plano p : planos) {
-            console.msg(String.format("- [%s] %s | R$ %,.2f/mes | %d meses | total c/ desconto R$ %,.2f",
-                    p.getId(), p.getNome(), p.getValorMensal(), p.getDuracaoMeses(),
+            console.msg(String.format("- [%s] %s | %s | R$ %,.2f/mes | %d meses | total c/ desconto R$ %,.2f",
+                    p.getId(), p.getNome(), p.getAbrangencia(), p.getValorMensal(), p.getDuracaoMeses(),
                     p.calcularValorTotalComDesconto()));
         }
     }
@@ -340,10 +370,42 @@ public class MenuAcademia {
     private void criarMatricula() {
         listarClientes();
         String clienteId = console.lerTextoObrigatorio("ID do cliente");
-        listarPlanos();
-        String planoId = console.lerTextoObrigatorio("ID do plano");
-        Matricula m = s.matriculas.criarMatricula(clienteId, planoId);
-        console.sucesso("Matricula criada (" + m.getStatus() + "). Pagamento inicial gerado como PENDENTE.");
+        Plano plano = selecionarPlano(false);
+        Matricula m = s.matriculas.criarMatricula(clienteId, plano.getId());
+        console.sucesso("Matricula criada (" + m.getStatus() + ") no plano '" + plano.getNome()
+                + "'. Pagamento inicial gerado como PENDENTE.");
+    }
+
+    /**
+     * Lista os planos da academia (numerados, com abrangencia e valor) e devolve o escolhido.
+     *
+     * @param permitirNenhum se true, oferece a opcao "0) Nao vincular agora" (retorna null).
+     */
+    private Plano selecionarPlano(boolean permitirNenhum) {
+        List<Plano> planos = s.planos.listarPorAcademia(academia.getId());
+        if (planos.isEmpty()) {
+            throw new br.com.redeacademia.exception.AcademiaException(
+                    "Nenhum plano cadastrado nesta academia. Cadastre um plano no menu Planos antes.");
+        }
+        console.msg("Planos disponiveis:");
+        for (int i = 0; i < planos.size(); i++) {
+            Plano p = planos.get(i);
+            console.msg(String.format("  %d) %s [%s] | R$ %,.2f/mes | %d meses",
+                    i + 1, p.getNome(), p.getAbrangencia(), p.getValorMensal(), p.getDuracaoMeses()));
+        }
+        if (permitirNenhum) {
+            console.msg("  0) Nao vincular agora");
+        }
+        while (true) {
+            int op = console.lerInt("Escolha o plano");
+            if (permitirNenhum && op == 0) {
+                return null;
+            }
+            if (op >= 1 && op <= planos.size()) {
+                return planos.get(op - 1);
+            }
+            console.erro("Opcao fora do intervalo.");
+        }
     }
 
     private void listarMatriculas() {
@@ -429,19 +491,18 @@ public class MenuAcademia {
     }
 
     private void adicionarExercicio() {
-        String treinoId = console.lerTextoObrigatorio("ID do treino");
-        s.treinos.adicionarExercicio(treinoId,
+        Treino t = selecionarTreino();
+        s.treinos.adicionarExercicio(t.getId(),
                 console.lerTextoObrigatorio("Nome do exercicio"),
                 console.lerTexto("Grupo muscular"),
                 console.lerInt("Series"),
                 console.lerInt("Repeticoes"),
                 console.lerDouble("Carga (kg)"));
-        Treino t = s.treinos.buscar(treinoId);
         console.sucesso(String.format("Exercicio adicionado. Carga total do treino: %.1f", t.calcularCargaTotal()));
     }
 
     private void atualizarTreino() {
-        Treino t = s.treinos.buscar(console.lerTextoObrigatorio("ID do treino"));
+        Treino t = selecionarTreino();
         s.treinos.atualizar(t.getId(),
                 console.lerTextoOuManter("Nome do treino", t.getNome()),
                 console.lerTextoOuManter("Objetivo", t.getObjetivo()),
@@ -451,7 +512,7 @@ public class MenuAcademia {
     }
 
     private void removerExercicio() {
-        Treino t = s.treinos.buscar(console.lerTextoObrigatorio("ID do treino"));
+        Treino t = selecionarTreino();
         if (t.getExercicios().isEmpty()) {
             console.msg("Este treino nao tem exercicios.");
             return;
@@ -470,14 +531,50 @@ public class MenuAcademia {
             return;
         }
         for (Treino t : treinos) {
-            console.msg(String.format("- [%s] %s | %s | %d exercicios | carga total %.1f",
-                    t.getId(), t.getNome(), t.getNivel(), t.getExercicios().size(), t.calcularCargaTotal()));
+            console.msg(String.format("- [%s] %s | %s | %d min | %d exercicios | carga total %.1f",
+                    t.getId(), t.getNome(), t.getNivel(), t.getDuracaoMinutos(),
+                    t.getExercicios().size(), t.calcularCargaTotal()));
+            if (t.getExercicios().isEmpty()) {
+                console.msg("     (sem exercicios)");
+            } else {
+                for (Exercicio e : t.getExercicios()) {
+                    console.msg(String.format("     * %s (%s) | %dx%d | %.1f kg | volume %.1f",
+                            e.getNome(), e.getGrupoMuscular(), e.getSeries(), e.getRepeticoes(),
+                            e.getCarga(), e.calcularVolume()));
+                }
+            }
         }
     }
 
     private void removerTreino() {
-        s.treinos.remover(console.lerTextoObrigatorio("ID do treino a remover"));
+        Treino t = selecionarTreino();
+        s.treinos.remover(t.getId());
         console.sucesso("Treino removido.");
+    }
+
+    /** Lista os treinos da academia (numerados, com cliente e nivel) e devolve o escolhido. */
+    private Treino selecionarTreino() {
+        List<Treino> treinos = new ArrayList<>();
+        for (Cliente c : s.clientes.listarPorAcademia(academia.getId())) {
+            treinos.addAll(s.treinos.listarPorCliente(c.getId()));
+        }
+        if (treinos.isEmpty()) {
+            throw new br.com.redeacademia.exception.AcademiaException("Nenhum treino cadastrado nesta academia.");
+        }
+        console.msg("Treinos cadastrados:");
+        for (int i = 0; i < treinos.size(); i++) {
+            Treino t = treinos.get(i);
+            String cliente = s.clientes.buscarPorId(t.getClienteId()).getNome();
+            console.msg(String.format("  %d) [%s] %s | cliente %s | %s | %d exercicios",
+                    i + 1, t.getId(), t.getNome(), cliente, t.getNivel(), t.getExercicios().size()));
+        }
+        while (true) {
+            int op = console.lerInt("Escolha o treino");
+            if (op >= 1 && op <= treinos.size()) {
+                return treinos.get(op - 1);
+            }
+            console.erro("Opcao fora do intervalo.");
+        }
     }
 
     // ------------------------------------------------------------ Acessos

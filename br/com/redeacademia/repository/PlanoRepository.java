@@ -1,6 +1,7 @@
 package br.com.redeacademia.repository;
 
 import br.com.redeacademia.model.Plano;
+import br.com.redeacademia.model.enums.AbrangenciaPlano;
 import br.com.redeacademia.util.MapUtil;
 
 import java.util.LinkedHashMap;
@@ -15,9 +16,10 @@ public class PlanoRepository extends Repositorio<Plano> {
         super("planos.txt");
     }
 
+    /** Planos da academia informada, incluindo os planos de abrangencia REDE (disponiveis em qualquer unidade). */
     public List<Plano> listarPorAcademia(String academiaId) {
         return itens.stream()
-                .filter(p -> academiaId.equals(p.getAcademiaId()))
+                .filter(p -> p.cobreAcademia(academiaId))
                 .collect(Collectors.toList());
     }
 
@@ -35,17 +37,20 @@ public class PlanoRepository extends Repositorio<Plano> {
         m.put("duracaoMeses", p.getDuracaoMeses());
         m.put("ativo", p.isAtivo());
         m.put("academiaId", p.getAcademiaId());
+        m.put("abrangencia", p.getAbrangencia().name());
         return m;
     }
 
     @Override
     protected Plano deMapa(Map<String, Object> m) {
+        AbrangenciaPlano abrangencia = MapUtil.enumDe(m, "abrangencia", AbrangenciaPlano.class);
         Plano p = new Plano(
                 MapUtil.str(m, "id"),
                 MapUtil.str(m, "nome"),
                 MapUtil.dbl(m, "valorMensal"),
                 MapUtil.inteiro(m, "duracaoMeses"),
-                MapUtil.str(m, "academiaId"));
+                MapUtil.str(m, "academiaId"),
+                abrangencia == null ? AbrangenciaPlano.ACADEMIA : abrangencia);
         p.setAtivo(MapUtil.bool(m, "ativo"));
         return p;
     }

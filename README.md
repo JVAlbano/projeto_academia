@@ -136,7 +136,7 @@ classDiagram
 | **≥ 11 classes** (sem contar enums) | 14 classes de domínio + 11 exceções + repositórios/serviços |
 | **Encapsulamento** | Todos os atributos `private`/`protected`, acesso por getters/setters validados |
 | **Polimorfismo** (2 hierarquias) | `calcularComissao()` e `gerarRelatorio()` — 3 implementações cada (Gerente/Instrutor/Recepcionista) |
-| **≥ 5 regras de negócio** | RN01 a RN07 (7 regras), ver tabela abaixo |
+| **≥ 5 regras de negócio** | RN01 a RN08 (8 regras), ver tabela abaixo |
 | **Interação entre múltiplas classes** | Criação de matrícula liga Cliente → Plano → Academia → Pagamento |
 | **Exceções personalizadas + validação** | `AcademiaException` (base) + 10 subclasses; validação de dados nos setters |
 | **Diagrama de classes (UML)** | `docs/diagrama-classes.puml` + Mermaid acima (classes, relações, multiplicidades) |
@@ -159,12 +159,13 @@ relatórios chama `gerarRelatorio()` — **sem conhecer o tipo concreto**.
 | # | Regra | Exceção |
 |---|---|---|
 | RN01 | CPF único e válido (dígitos verificadores) | `CpfInvalidoException` / `CpfDuplicadoException` |
-| RN02 | Cliente só contrata plano da própria academia | `PlanoDeOutraAcademiaException` |
+| RN02 | Cliente só contrata plano da própria academia (exceto planos de abrangência REDE) | `PlanoDeOutraAcademiaException` |
 | RN03 | Cada academia tem no máximo 1 gerente | `GerenteJaAtribuidoException` |
 | RN04 | Só o gerente da unidade contrata/demite | `AcessoNegadoException` |
 | RN05 | Matrícula só ativa com pagamento confirmado | `MatriculaSemPagamentoException` |
 | RN06 | Inadimplente não acessa nem recebe treino | `ClienteInadimplenteException` |
 | RN07 | Vencimentos automáticos na inicialização | (transições automáticas de estado) |
+| RN08 | Cliente só acessa academia coberta por matrícula ativa; planos REDE cobrem todas | `AcessoNegadoException` |
 
 ### Máquinas de estado
 

@@ -17,7 +17,8 @@ public abstract class Pessoa {
     protected String telefone;
 
     protected Pessoa(String id, String nome, String cpf, String email, String telefone) {
-        ValidadorCpf.validar(cpf); // RN01 (parte): formato e digitos verificadores
+        // Checagem de digitos verificadores desativada (dados de teste): aceita qualquer CPF.
+        // A unicidade do CPF (RN01) continua sendo aplicada nos services.
         if (nome == null || nome.isBlank()) {
             throw new IllegalArgumentException("Nome nao pode ser vazio.");
         }

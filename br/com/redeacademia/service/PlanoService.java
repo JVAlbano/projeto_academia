@@ -3,6 +3,7 @@ package br.com.redeacademia.service;
 import br.com.redeacademia.exception.AcademiaException;
 import br.com.redeacademia.model.Academia;
 import br.com.redeacademia.model.Plano;
+import br.com.redeacademia.model.enums.AbrangenciaPlano;
 import br.com.redeacademia.model.enums.StatusMatricula;
 import br.com.redeacademia.model.pessoa.Gerente;
 import br.com.redeacademia.util.GeradorId;
@@ -19,8 +20,13 @@ public class PlanoService {
     }
 
     public Plano criar(Gerente gerenteAtuante, Academia academia, String nome, double valorMensal, int duracaoMeses) {
+        return criar(gerenteAtuante, academia, nome, valorMensal, duracaoMeses, AbrangenciaPlano.ACADEMIA);
+    }
+
+    public Plano criar(Gerente gerenteAtuante, Academia academia, String nome, double valorMensal, int duracaoMeses,
+                       AbrangenciaPlano abrangencia) {
         gerenteAtuante.autorizarOperacaoNa(academia, "gerenciar planos"); // RN04
-        Plano plano = new Plano(GeradorId.gerar("PLANO"), nome, valorMensal, duracaoMeses, academia.getId());
+        Plano plano = new Plano(GeradorId.gerar("PLANO"), nome, valorMensal, duracaoMeses, academia.getId(), abrangencia);
         dados.planos().adicionar(plano);
         return plano;
     }

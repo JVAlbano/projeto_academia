@@ -36,8 +36,8 @@ public class MatriculaService {
         Plano plano = dados.planos().buscarPorId(planoId)
                 .orElseThrow(() -> new AcademiaException("Plano nao encontrado: " + planoId));
 
-        // RN02: o plano precisa pertencer a academia do cliente.
-        if (!plano.getAcademiaId().equals(cliente.getAcademiaId())) {
+        // RN02: plano ACADEMIA precisa ser da academia do cliente; plano REDE vale em qualquer unidade.
+        if (!plano.isRede() && !plano.getAcademiaId().equals(cliente.getAcademiaId())) {
             throw new PlanoDeOutraAcademiaException();
         }
 

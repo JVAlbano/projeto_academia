@@ -2,6 +2,7 @@ package br.com.redeacademia.service;
 
 import br.com.redeacademia.model.Matricula;
 import br.com.redeacademia.model.Plano;
+import br.com.redeacademia.model.enums.StatusMatricula;
 import br.com.redeacademia.model.enums.StatusPagamento;
 
 import java.util.Set;
@@ -26,5 +27,14 @@ public final class Consultas {
         return dados.pagamentos().listar().stream()
                 .filter(p -> matriculasDoCliente.contains(p.getMatriculaId()))
                 .anyMatch(p -> p.getStatus() == StatusPagamento.ATRASADO);
+    }
+
+    /** RN08: o cliente tem acesso na academia se tem matricula ATIVA cujo plano a cobre. */
+    public static boolean clienteTemAcessoNa(Dados dados, String clienteId, String academiaId) {
+        return dados.matriculas().listarPorCliente(clienteId).stream()
+                .filter(m -> m.getStatus() == StatusMatricula.ATIVA)
+                .map(m -> dados.planos().buscarPorId(m.getPlanoId()).orElse(null))
+                .filter(p -> p != null)
+                .anyMatch(p -> p.cobreAcademia(academiaId));
     }
 }
