@@ -174,17 +174,3 @@ relatórios chama `gerarRelatorio()` — **sem conhecer o tipo concreto**.
 
 Cada uma valida as transições em `avancarEstado(...)`, lançando
 `TransicaoEstadoInvalidaException` para transições proibidas (ex.: `CANCELADA → ATIVA`).
-
----
-
-## Dados de exemplo
-
-Na primeira execução são criados: 1 rede, 2 academias, 4 funcionários (gerentes, instrutor,
-recepcionista), 4 clientes, 3 planos, matrículas + pagamentos e um treino com exercícios —
-suficiente para demonstrar relatórios, folha de pagamento e todas as regras de negócio.
-
----
-
-## Autores
-
-Grupo da disciplina de POO — ver `ENTREGA.txt`.
