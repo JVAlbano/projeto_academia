@@ -68,14 +68,14 @@ public class MenuAcademia {
 
     private void menuFuncionarios() {
         console.titulo("Funcionarios");
-        console.msg("1) Atribuir gerente (nivel rede)");
+        console.msg("1) Atribuir gerente da rede");
         console.msg("2) Contratar instrutor");
         console.msg("3) Contratar recepcionista");
-        console.msg("4) Listar funcionarios (inclui o gerente)");
+        console.msg("4) Listar funcionarios");
         console.msg("5) Atualizar funcionario");
         console.msg("6) Demitir funcionario");
         console.msg("7) Folha de pagamento");
-        console.msg("8) Relatorios operacionais (polimorfico)");
+        console.msg("8) Relatorios operacionais");
         console.msg("0) Voltar");
         switch (console.lerInt("Opcao")) {
             case 1 -> atribuirGerente();

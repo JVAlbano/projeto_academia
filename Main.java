@@ -1,5 +1,4 @@
 import br.com.redeacademia.service.Dados;
-import br.com.redeacademia.service.SeedDados;
 import br.com.redeacademia.ui.Console;
 import br.com.redeacademia.ui.MenuPrincipal;
 import br.com.redeacademia.ui.Servicos;
@@ -11,11 +10,6 @@ public class Main {
         Dados dados = new Dados();
         dados.carregar();
         Servicos servicos = new Servicos(dados);
-
-        if (!dados.possuiRede() && dados.academias().quantidade() == 0) {
-            new SeedDados(dados).popular();
-            System.out.println("[Sistema] Primeira execucao: dados de exemplo gerados.");
-        }
 
         System.out.println("[Sistema] " + servicos.inicializacao.aplicarRegrasTemporais());
 
