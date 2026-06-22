@@ -4,18 +4,7 @@ import br.com.redeacademia.ui.Console;
 import br.com.redeacademia.ui.MenuPrincipal;
 import br.com.redeacademia.ui.Servicos;
 
-/**
- * Ponto de entrada do Sistema de Gerenciamento de Rede de Academias.
- *
- * <p>Fluxo de inicializacao:</p>
- * <ol>
- *   <li>carrega o estado dos arquivos JSON em /data;</li>
- *   <li>na primeira execucao (sem dados), gera dados de exemplo;</li>
- *   <li>aplica as regras temporais automaticas (RN07);</li>
- *   <li>registra um shutdown hook que persiste tudo ao encerrar;</li>
- *   <li>inicia o menu interativo de terminal.</li>
- * </ol>
- */
+
 public class Main {
 
     public static void main(String[] args) {
